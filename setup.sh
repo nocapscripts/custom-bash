@@ -4,7 +4,7 @@
 REPO_URL="https://github.com/reduxscripts/arch-bash.git"  # Replace with your GitHub repo URL
 CLONE_DIR="$HOME/arch-bash"  # Directory to clone the repository into
 BACKUP_FILE="$HOME/.bashrc.bak"
-NEW_BASHRC="$CLONE_DIR/.bashrc"  # Path to the new .bashrc file within the cloned repo
+NEW_BASHRC="$CLONE_DIR/bashrc/.bashrc"  # Path to the new .bashrc file within the cloned repo
 DEFAULT_BASHRC="$HOME/.bashrc"  # Default content path if needed
 
 # Clone the GitHub repository
