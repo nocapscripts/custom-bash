@@ -5,12 +5,11 @@ REPO_URL="https://github.com/reduxscripts/arch-bash.git"  # Replace with your Gi
 CLONE_DIR="$HOME/arch-bash"  # Directory to clone the repository into
 BACKUP_FILE="$HOME/.bashrc.bak"
 NEW_BASHRC="$CLONE_DIR/bashrc/.bashrc"  # Path to the new .bashrc file within the cloned repo
-DEFAULT_BASHRC="$HOME/.bashrc"  # Default content path if needed
 
 # Clone the GitHub repository
 if [ -d "$CLONE_DIR" ]; then
   echo "Repository directory $CLONE_DIR already exists. Pulling latest changes..."
-  cd "$CLONE_DIR"
+  cd "$CLONE_DIR" || exit
   git pull
 else
   echo "Cloning the repository from $REPO_URL..."
@@ -25,17 +24,19 @@ if [ -f "$HOME/.bashrc" ]; then
 
   # Copy the new .bashrc file
   if [ -f "$NEW_BASHRC" ]; then
-    cp "$NEW_BASHRC" "$HOME/.bashrc"
+    cp "$NEW_BASHRC" "$HOME/"
     echo "New .bashrc file copied from $NEW_BASHRC"
   else
     echo "New .bashrc file not found at $NEW_BASHRC"
     exit 1
   fi
 else
-  echo ".bashrc does not exist. Creating a new .bashrc file with default content."
+  echo ".bashrc does not exist. Creating a new .bashrc file."
 
   # Copy the new .bashrc file from the repo or create a default one
   if [ -f "$NEW_BASHRC" ]; then
+    touch $HOME/.bashrc
+    
     cp "$NEW_BASHRC" "$HOME/.bashrc"
     echo "New .bashrc file created from $NEW_BASHRC"
   else
