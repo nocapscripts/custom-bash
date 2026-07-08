@@ -481,7 +481,7 @@ installStarshipAndFzf() {
             ;;
     esac
 
-    ## check if .fzf exists if exist remove .fzf and reinstall
+    ## check if .fzf exists if exist remove .fzf and reinstall it
     if command_exists fzf; then
         success "Removing existing fzf..."
         rm -rf "$USER_HOME/.fzf"
