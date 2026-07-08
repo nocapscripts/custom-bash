@@ -105,6 +105,71 @@ checkEnv() {
     fi
 }
 
+
+# ─────────────────────────────────────────────
+# Install FiraCode Nerd Font
+# ─────────────────────────────────────────────
+installFiraCodeNerdFont() {
+
+    if command_exists fc-list &&
+       fc-list :family | grep -qi "FiraCode Nerd Font"; then
+        success "FiraCode Nerd Font already installed."
+        return
+    fi
+
+
+    info "Installing FiraCode Nerd Font..."
+
+
+    case "$PACKAGER" in
+
+        apt|nala|dnf|dnf5|yum|zypper|xbps-install|pacman|emerge)
+
+            if ! command_exists curl; then
+                $SUDO_CMD "$PACKAGER" install -y curl
+            fi
+
+            if ! command_exists unzip; then
+                $SUDO_CMD "$PACKAGER" install -y unzip
+            fi
+
+            FONT_DIR="$USER_HOME/.local/share/fonts/FiraCode"
+
+            mkdir -p "$FONT_DIR"
+
+
+            curl -L \
+                https://github.com/ryanoasis/nerd-fonts/releases/latest/download/FiraCode.zip \
+                -o /tmp/FiraCode.zip
+
+
+            unzip -qo \
+                /tmp/FiraCode.zip \
+                -d "$FONT_DIR"
+
+
+            rm -f /tmp/FiraCode.zip
+
+
+            if command_exists fc-cache; then
+                fc-cache -fv >/dev/null 2>&1
+            fi
+
+
+            success "FiraCode Nerd Font installed."
+
+            ;;
+
+
+        *)
+
+            info "FiraCode Nerd Font installation skipped for $PACKAGER."
+
+            ;;
+
+    esac
+}
+
 # ─────────────────────────────────────────────
 # Dependencies
 # ─────────────────────────────────────────────
@@ -399,6 +464,7 @@ installDepend() {
 
     fi
 
+    installFiraCodeNerdFont
 
     success "Dependencies installed."
 }
