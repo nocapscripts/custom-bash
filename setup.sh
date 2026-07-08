@@ -301,21 +301,20 @@ installDepend() {
 
     esac
 
-    if command_exists fc-list && ! fc-list :family | grep -qi "FiraCode Nerd Font"; then
+    # Remove FiraCode Nerd Font if it's installed
+    if command_exists fc-list && fc-list :family | grep -qi "FiraCode Nerd Font"; then
 
-        info "Installing FiraCode Nerd Font..."
+        info "Removing FiraCode Nerd Font..."
 
-        wget -q https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/FiraCode.zip
-
-        unzip -q FiraCode.zip -d FiraCode
-
-        mkdir -p "$USER_HOME/.local/share/fonts"
-
-        mv FiraCode/*.ttf "$USER_HOME/.local/share/fonts/"
+        find "$USER_HOME/.local/share/fonts" -iname "*FiraCode*Nerd*" -type f -delete 2>/dev/null || true
 
         fc-cache -fv >/dev/null
 
-        rm -rf FiraCode FiraCode.zip
+        if fc-list :family | grep -qi "FiraCode Nerd Font"; then
+            error "FiraCode Nerd Font still detected — it may be installed system-wide (check /usr/share/fonts)."
+        else
+            success "FiraCode Nerd Font removed."
+        fi
     fi
 }
 
