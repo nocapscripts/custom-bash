@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-chmod +x *
+# Only chmod actual files in this dir, not directories/dotfiles blindly
+find . -maxdepth 1 -type f -name "*.sh" -exec chmod +x {} \;
 
 # ─────────────────────────────────────────────
 # Colors & helpers
@@ -22,14 +23,13 @@ PACKAGER=""
 SUDO_CMD=""
 GITPATH="$(pwd)"
 REAL_USER=""
+USER_HOME=""
 
 command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-
 get_real_user() {
-
     if [[ -n "${SUDO_USER:-}" ]]; then
         echo "$SUDO_USER"
     else
@@ -37,9 +37,7 @@ get_real_user() {
     fi
 }
 
-
 get_user_home() {
-
     if command_exists getent; then
         getent passwd "$REAL_USER" | cut -d: -f6
     else
@@ -47,26 +45,19 @@ get_user_home() {
     fi
 }
 
-
 run_root() {
-
     if [[ $EUID -eq 0 ]]; then
         "$@"
-
     elif command_exists sudo; then
         sudo "$@"
-
     elif command_exists doas; then
         doas "$@"
-
     else
         su -c "$(printf '%q ' "$@")"
     fi
 }
 
-
 run_user() {
-
     if [[ "$REAL_USER" == "$USER" ]]; then
         "$@"
     else
@@ -78,6 +69,9 @@ run_user() {
 # Environment
 # ─────────────────────────────────────────────
 checkEnv() {
+    REAL_USER="$(get_real_user)"
+    USER_HOME="$(get_user_home)"
+
     command_exists curl || {
         error "curl is required."
         exit 1
@@ -162,15 +156,16 @@ installDepend() {
             command_exists bat || PKGS+=(bat)
             command_exists fastfetch || PKGS+=(fastfetch)
             command_exists nvim || PKGS+=(neovim)
-            command_exists starship || PKGS+=(starship)
             command_exists fzf || PKGS+=(fzf)
             command_exists zoxide || PKGS+=(zoxide)
+            # starship intentionally NOT included — not in Fedora's official
+            # repos; installed via curl script in installStarshipAndFzf()
 
             if "$PACKAGER" repoquery multitail >/dev/null 2>&1; then
                 PKGS+=(multitail)
             fi
 
-            $SUDO_CMD "$PACKAGER" install -y "${PKGS[@]}"
+            $SUDO_CMD "$PACKAGER" install -y --skip-unavailable "${PKGS[@]}"
             ;;
 
         apt|nala)
@@ -314,9 +309,9 @@ installDepend() {
 
         unzip -q FiraCode.zip -d FiraCode
 
-        mkdir -p "$HOME/.local/share/fonts"
+        mkdir -p "$USER_HOME/.local/share/fonts"
 
-        mv FiraCode/*.ttf "$HOME/.local/share/fonts/"
+        mv FiraCode/*.ttf "$USER_HOME/.local/share/fonts/"
 
         fc-cache -fv >/dev/null
 
@@ -330,7 +325,7 @@ installDepend() {
 installStarshipAndFzf() {
 
     case "$PACKAGER" in
-        brew|dnf|dnf5|pacman)
+        brew|pacman)
             return
             ;;
     esac
@@ -339,8 +334,8 @@ installStarshipAndFzf() {
         curl -fsSL https://starship.rs/install.sh | sh -s -- -y
 
     if ! command_exists fzf; then
-        git clone --depth=1 https://github.com/junegunn/fzf.git "$HOME/.fzf"
-        "$HOME/.fzf/install" --all
+        git clone --depth=1 https://github.com/junegunn/fzf.git "$USER_HOME/.fzf"
+        "$USER_HOME/.fzf/install" --all
     fi
 }
 
@@ -361,8 +356,6 @@ installZoxide() {
 # ─────────────────────────────────────────────
 create_fastfetch_config() {
 
-    USER_HOME="$(get_user_home)"
-
     mkdir -p "$USER_HOME/.config/fastfetch"
 
     ln -sf \
@@ -371,8 +364,6 @@ create_fastfetch_config() {
 }
 
 linkConfig() {
-
-    USER_HOME="$(get_user_home)"
 
     mkdir -p "$USER_HOME/.config"
 
@@ -396,21 +387,16 @@ commands() {
     bash ./utils/commands.sh
 }
 
-
-
 # ─────────────────────────────────────────────
 # Main
 # ─────────────────────────────────────────────
 checkEnv
-alacritty
-commands
 installDepend
 installStarshipAndFzf
 installZoxide
 create_fastfetch_config
 linkConfig
-
-
-
+alacritty
+commands
 
 success "Done! Restart your shell to see the changes."
