@@ -112,31 +112,32 @@ installDepend() {
 
     info "Installing dependencies..."
 
-    if [[ "$PACKAGER" == "brew" ]]; then
-        brew update
-
-        brew install \
-            bash \
-            bash-completion \
-            bat \
-            fastfetch \
-            tree \
-            multitail \
-            wget \
-            unzip \
-            fontconfig \
-            neovim \
-            fzf \
-            zoxide \
-            starship
-
-        brew tap homebrew/cask-fonts
-        brew install --cask font-fira-code-nerd-font
-
-        return
-    fi
-
     case "$PACKAGER" in
+
+        brew)
+
+            brew update
+
+            brew install \
+                bash \
+                bash-completion \
+                bat \
+                fastfetch \
+                tree \
+                multitail \
+                wget \
+                unzip \
+                fontconfig \
+                neovim \
+                fzf \
+                zoxide \
+                starship
+
+            brew install --cask font-fira-code-nerd-font || true
+
+            return
+            ;;
+
 
         dnf5|dnf)
 
@@ -149,8 +150,8 @@ installDepend() {
                 unzip
                 git
                 curl
-                alacritty
                 fontconfig
+                alacritty
             )
 
             command_exists bat || PKGS+=(bat)
@@ -158,15 +159,14 @@ installDepend() {
             command_exists nvim || PKGS+=(neovim)
             command_exists fzf || PKGS+=(fzf)
             command_exists zoxide || PKGS+=(zoxide)
-            # starship intentionally NOT included — not in Fedora's official
-            # repos; installed via curl script in installStarshipAndFzf()
 
-            if "$PACKAGER" repoquery multitail >/dev/null 2>&1; then
+            if dnf repoquery multitail >/dev/null 2>&1; then
                 PKGS+=(multitail)
             fi
 
             $SUDO_CMD "$PACKAGER" install -y --skip-unavailable "${PKGS[@]}"
             ;;
+
 
         apt|nala)
 
@@ -180,59 +180,115 @@ installDepend() {
                 git
                 curl
                 fontconfig
-                bat
-                alacritty
-                multitail
             )
+
+
+            # Debian uses batcat
+            if command_exists bat; then
+                :
+            elif command_exists batcat; then
+                :
+            else
+                PKGS+=(bat)
+            fi
+
 
             command_exists nvim || PKGS+=(neovim)
 
+            if apt-cache show multitail >/dev/null 2>&1; then
+                PKGS+=(multitail)
+            fi
+
+
+            if apt-cache show alacritty >/dev/null 2>&1; then
+                PKGS+=(alacritty)
+            fi
+
+
             $SUDO_CMD "$PACKAGER" install -y "${PKGS[@]}"
 
+
             if ! command_exists fastfetch; then
+
                 info "Installing fastfetch..."
 
                 ARCH="$(uname -m)"
 
                 case "$ARCH" in
-                    x86_64) ARCH=amd64 ;;
-                    aarch64|arm64) ARCH=arm64 ;;
+                    x86_64)
+                        ARCH="amd64"
+                        ;;
+                    aarch64|arm64)
+                        ARCH="arm64"
+                        ;;
                     *)
-                        error "Unsupported architecture."
-                        exit 1
+                        error "Unsupported architecture: $ARCH"
+                        return 1
                         ;;
                 esac
 
-                URL=$(curl -s https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest \
+
+                URL=$(curl -fsSL \
+                    https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest \
                     | grep browser_download_url \
-                    | grep "linux-${ARCH}.deb" \
+                    | grep -E "linux.*${ARCH}.*\\.deb" \
+                    | head -n1 \
                     | cut -d '"' -f4)
 
-                wget -q "$URL" -O /tmp/fastfetch.deb
-                $SUDO_CMD dpkg -i /tmp/fastfetch.deb
+
+                if [[ -z "$URL" ]]; then
+                    error "Fastfetch package not found for $ARCH"
+                    return 1
+                fi
+
+
+                info "Downloading:"
+                echo "$URL"
+
+
+                wget -O /tmp/fastfetch.deb "$URL"
+
+
+                $SUDO_CMD dpkg -i /tmp/fastfetch.deb \
+                    || $SUDO_CMD apt-get install -f -y
+
+
                 rm -f /tmp/fastfetch.deb
+
+                success "Fastfetch installed."
+
             fi
+
             ;;
+
 
         pacman)
 
             if ! command_exists yay && ! command_exists paru; then
-                $SUDO_CMD pacman -S --needed --noconfirm base-devel git
 
-                git clone https://aur.archlinux.org/yay-git.git /tmp/yay-git
+                $SUDO_CMD pacman \
+                    -S --needed --noconfirm \
+                    base-devel git
+
+
+                git clone \
+                    https://aur.archlinux.org/yay-git.git \
+                    /tmp/yay-git
+
 
                 (
                     cd /tmp/yay-git
                     makepkg -si --noconfirm
                 )
 
+
                 rm -rf /tmp/yay-git
             fi
+
 
             PKGS=(
                 bash
                 bash-completion
-                tar
                 bat
                 fastfetch
                 tree
@@ -247,30 +303,68 @@ installDepend() {
                 zoxide
             )
 
+
             if command_exists yay; then
                 yay -S --needed --noconfirm "${PKGS[@]}"
             else
                 paru -S --needed --noconfirm "${PKGS[@]}"
             fi
+
             ;;
+
 
         yum)
+
             $SUDO_CMD yum install -y \
-                bash bash-completion tar tree wget unzip \
-                git curl fontconfig neovim bat
+                bash \
+                bash-completion \
+                tar \
+                tree \
+                wget \
+                unzip \
+                git \
+                curl \
+                fontconfig \
+                neovim
+
             ;;
+
 
         zypper)
+
             $SUDO_CMD zypper install -y \
-                bash bash-completion tar tree wget unzip \
-                git curl fontconfig neovim bat fastfetch
+                bash \
+                bash-completion \
+                tar \
+                tree \
+                wget \
+                unzip \
+                git \
+                curl \
+                fontconfig \
+                neovim \
+                fastfetch
+
             ;;
 
+
         xbps-install)
+
             $SUDO_CMD xbps-install -Sy \
-                bash bash-completion tar tree wget unzip \
-                git curl fontconfig neovim bat fastfetch
+                bash \
+                bash-completion \
+                tar \
+                tree \
+                wget \
+                unzip \
+                git \
+                curl \
+                fontconfig \
+                neovim \
+                fastfetch
+
             ;;
+
 
         emerge)
 
@@ -282,7 +376,9 @@ installDepend() {
                 sys-apps/bat \
                 app-text/tree \
                 app-misc/fastfetch
+
             ;;
+
 
         nix-env)
 
@@ -297,25 +393,62 @@ installDepend() {
                 nixos.starship \
                 nixos.fzf \
                 nixos.zoxide
+
+            ;;
+
+
+        *)
+            error "Unsupported package manager: $PACKAGER"
+            return 1
             ;;
 
     esac
 
-    # Remove FiraCode Nerd Font if it's installed
-    if command_exists fc-list && fc-list :family | grep -qi "FiraCode Nerd Font"; then
+
+
+    # ─────────────────────────────────────────
+    # Remove FiraCode Nerd Font
+    # ─────────────────────────────────────────
+
+    if command_exists fc-list &&
+       fc-list :family | grep -qi "FiraCode Nerd Font"; then
+
 
         info "Removing FiraCode Nerd Font..."
 
-        find "$USER_HOME/.local/share/fonts" -iname "*FiraCode*Nerd*" -type f -delete 2>/dev/null || true
 
-        fc-cache -fv >/dev/null
+        FONT_DIRS=(
+            "$USER_HOME/.local/share/fonts"
+            "/usr/share/fonts"
+            "/usr/local/share/fonts"
+        )
+
+
+        for dir in "${FONT_DIRS[@]}"; do
+
+            [[ -d "$dir" ]] || continue
+
+            $SUDO_CMD find "$dir" \
+                -iname "*FiraCode*Nerd*" \
+                -type f \
+                -delete 2>/dev/null || true
+
+        done
+
+
+        fc-cache -fv >/dev/null 2>&1
+
 
         if fc-list :family | grep -qi "FiraCode Nerd Font"; then
-            error "FiraCode Nerd Font still detected — it may be installed system-wide (check /usr/share/fonts)."
+            error "FiraCode Nerd Font still exists."
         else
             success "FiraCode Nerd Font removed."
         fi
+
     fi
+
+
+    success "Dependencies installed."
 }
 
 # ─────────────────────────────────────────────
