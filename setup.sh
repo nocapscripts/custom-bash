@@ -481,12 +481,23 @@ installStarshipAndFzf() {
             ;;
     esac
 
+    ## check if .fzf exists if exist remove .fzf and reinstall
+    if command_exists fzf; then
+        success "Removing existing fzf..."
+        rm -rf "$USER_HOME/.fzf"
+        success "Existing fzf removed."
+    fi
+
+
+
     command_exists starship ||
         curl -fsSL https://starship.rs/install.sh | sh -s -- -y
 
     if ! command_exists fzf; then
+        success "Installing fzf..."
         git clone --depth=1 https://github.com/junegunn/fzf.git "$USER_HOME/.fzf"
         "$USER_HOME/.fzf/install" --all
+        success "fzf installed."
     fi
 }
 
