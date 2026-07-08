@@ -180,6 +180,7 @@ installDepend() {
                 git
                 curl
                 fontconfig
+                fastfetch
             )
 
 
@@ -208,56 +209,7 @@ installDepend() {
             $SUDO_CMD "$PACKAGER" install -y "${PKGS[@]}"
 
 
-            if ! command_exists fastfetch; then
 
-                info "Installing fastfetch..."
-
-                ARCH="$(uname -m)"
-
-                case "$ARCH" in
-                    x86_64)
-                        ARCH="amd64"
-                        ;;
-                    aarch64|arm64)
-                        ARCH="arm64"
-                        ;;
-                    *)
-                        error "Unsupported architecture: $ARCH"
-                        return 1
-                        ;;
-                esac
-
-
-                URL=$(curl -fsSL \
-                    https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest \
-                    | grep browser_download_url \
-                    | grep -E "linux.*${ARCH}.*\\.deb" \
-                    | head -n1 \
-                    | cut -d '"' -f4)
-
-
-                if [[ -z "$URL" ]]; then
-                    error "Fastfetch package not found for $ARCH"
-                    return 1
-                fi
-
-
-                info "Downloading:"
-                echo "$URL"
-
-
-                wget -O /tmp/fastfetch.deb "$URL"
-
-
-                $SUDO_CMD dpkg -i /tmp/fastfetch.deb \
-                    || $SUDO_CMD apt-get install -f -y
-
-
-                rm -f /tmp/fastfetch.deb
-
-                success "Fastfetch installed."
-
-            fi
 
             ;;
 
