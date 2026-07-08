@@ -119,6 +119,13 @@
             "text": "birth_install=$(stat -c %W /); current=$(date +%s); days=$(( (current - birth_install) / 86400 )); echo ${days} days"
         },
 
+        {
+            "type": "command",
+            "key": " 󰞌 First Boot",
+            "keyColor": "magenta",
+            "text": "uptime_seconds=$(cut -d. -f1 /proc/uptime); days=$((uptime_seconds / 86400)); hours=$(((uptime_seconds % 86400) / 3600)); printf '%dd %dh ago' \"$days\" \"$hours\""
+        }
+
 
         {
             "type": "custom",

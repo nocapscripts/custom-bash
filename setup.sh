@@ -438,6 +438,7 @@ installDepend() {
             "$USER_HOME/.local/share/fonts"
             "/usr/share/fonts"
             "/usr/local/share/fonts"
+            "$USER_HOME/.fzf"
         )
 
 
