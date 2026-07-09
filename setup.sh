@@ -246,6 +246,7 @@ installDepend() {
                 curl
                 fontconfig
                 fastfetch
+                starship
             )
 
 
@@ -475,30 +476,76 @@ installDepend() {
 # ─────────────────────────────────────────────
 installStarshipAndFzf() {
 
-    case "$PACKAGER" in
-        brew|pacman)
-            return
-            ;;
-    esac
+    info "Checking Starship and fzf..."
 
-    ## check if .fzf exists if exist remove .fzf and reinstall it
-    if command_exists fzf; then
-        success "Removing existing fzf..."
-        rm -rf "$USER_HOME/.fzf"
-        success "Existing fzf removed."
+
+    # ─────────────────────────────────────────
+    # Starship
+    # ─────────────────────────────────────────
+
+    if ! command_exists starship; then
+
+        info "Installing Starship..."
+
+        curl -fsSL https://starship.rs/install.sh \
+            | sh -s -- -y
+
+        success "Starship installed."
+
+    else
+        success "Starship already installed."
     fi
 
 
 
-    command_exists starship ||
-        curl -fsSL https://starship.rs/install.sh | sh -s -- -y
+    # ─────────────────────────────────────────
+    # fzf
+    # ─────────────────────────────────────────
 
     if ! command_exists fzf; then
-        success "Installing fzf..."
-        git clone --depth=1 https://github.com/junegunn/fzf.git "$USER_HOME/.fzf"
-        "$USER_HOME/.fzf/install" --all
+
+        info "Installing fzf..."
+
+        FZF_DIR="$USER_HOME/.fzf"
+
+
+        if [[ -d "$FZF_DIR" ]]; then
+            info "Removing old fzf directory..."
+            rm -rf "$FZF_DIR"
+        fi
+
+
+        git clone \
+            --depth 1 \
+            https://github.com/junegunn/fzf.git \
+            "$FZF_DIR"
+
+
+        "$FZF_DIR/install" \
+            --all \
+            --no-update-rc
+
+
+        sudo install \
+            -m 755 \
+            "$FZF_DIR/bin/fzf" \
+            /usr/local/bin/fzf
+
+
         success "fzf installed."
+
+    else
+
+        success "fzf already installed."
+
     fi
+
+
+
+
+
+
+    success "FZF Tools ready."
 }
 
 installZoxide() {
